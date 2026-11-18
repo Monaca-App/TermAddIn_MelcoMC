@@ -1,0 +1,98 @@
+; ==============================================================================
+; Term Macro Script: シーケンサデータ収集 (MCプロトコル 3E)
+; 生成AI: Antigravity (Gemini 4 Carbon (Medium))
+; 対象システム: 三菱電機 MELSEC シーケンサ（MCプロトコル QnA互換 3Eフレーム通信）
+; ==============================================================================
+TITLE, "シーケンサデータ収集 (MCプロトコル 3E)"
+
+; ------------------------------------------------------------------------------
+; コマンド定義: PORT_OPEN (通信ポート接続)
+; ------------------------------------------------------------------------------
+COMMAND, "PORT_OPEN"
+,PARAM, NET_NO, Text, "ネットワーク番号", "0"
+,PARAM, PC_NO, Text, "PC番号", "255"
+,PARAM, FRAME_FMT, List, "フレーム形式", "Binary", "ASCII"
+,PARAM, HOST_IP, Text, "接続先IPアドレス", "192.168.1.10"
+,PARAM, PORT_NO, Text, "接続先ポート番号", "5000"
+,PARAM, PROTOCOL, List, "通信プロトコル", "TCP", "UDP"
+,SEQUENCE, 10, Mc_Mode, "$NET_NO$", "$PC_NO$", "$FRAME_FMT$"
+,SEQUENCE, 20, Mc_Open, "$HOST_IP$", "$PORT_NO$", "$PROTOCOL$"
+,SEQUENCE, 30, Exit
+
+; ------------------------------------------------------------------------------
+; コマンド定義: READ_START (読み出し開始・初期確認)
+; ------------------------------------------------------------------------------
+COMMAND, "READ_START", ON
+,PARAM, DEV_TYPE, List, "デバイス種別", "ZR", "D", "W", "R", "TN", "CN"
+,PARAM, ADDR_STATUS, Text, "状態確認アドレス", "7FFE"
+,PARAM, ADDR_CTRL, Text, "制御コマンドアドレス", "7FFF"
+,PARAM, POINTS, Text, "アクセス点数", "1"
+,PARAM, VAL_INIT_CTRL, Text, "初期確認設定値", "0x0004"
+,PARAM, STATUS, Work, "判定結果", ""
+,SEQUENCE, 10, Mc_ReadWord, "$DEV_TYPE$$ADDR_STATUS$", "$POINTS$", "STATUS", "DEC"
+,SEQUENCE, 20, Judge, EQU, "$STATUS$", "0x0000", #ERR_EXIT#
+,SEQUENCE, 30, Mc_WriteWord, "$DEV_TYPE$$ADDR_CTRL$", "$VAL_INIT_CTRL$"
+,SEQUENCE, 40, Exit
+,SEQUENCE, #ERR_EXIT#, Exit
+
+; ------------------------------------------------------------------------------
+; コマンド定義: NUM_READ (数値データ読み出し)
+; ------------------------------------------------------------------------------
+COMMAND, "NUM_READ", "RESULT_DATA"
+,PARAM, DEV_TYPE, List, "デバイス種別", "ZR", "D", "W", "R", "TN", "CN"
+,PARAM, DEV_ADDR, Text, "読出デバイス番号", "8020"
+,PARAM, POINTS, Text, "読出点数", "1"
+,PARAM, ADDR_CTRL, Text, "復旧制御アドレス", "7FFF"
+,PARAM, VAL_RECOVERY, Text, "復旧制御設定値", "0x0002"
+,PARAM, RESULT_DATA, Range, "読出データ結果", ""
+,SEQUENCE, #RETRY#, Mc_ReadWord, "$DEV_TYPE$$DEV_ADDR$", "$POINTS$", "RESULT_DATA", "DEC"
+,SEQUENCE, 20, Judge, NEQ, "$RESULT_DATA$", "ERROR_TIMEOUT", #RETRY_FAIL#
+,SEQUENCE, 30, Judge, NEQ, "$RESULT_DATA$", "ERROR_INCOMPLETE", #RETRY_FAIL#
+,SEQUENCE, 40, Exit
+,SEQUENCE, #RETRY_FAIL#, Mc_WriteWord, "$DEV_TYPE$$ADDR_CTRL$", "$VAL_RECOVERY$"
+,SEQUENCE, 60, Jump, #RETRY#
+
+; ------------------------------------------------------------------------------
+; コマンド定義: REG_READ (レジスタ一括読み出し)
+; ------------------------------------------------------------------------------
+COMMAND, "REG_READ", "RESULT_DATA"
+,PARAM, DEV_TYPE, List, "デバイス種別", "ZR", "D", "W", "R", "TN", "CN"
+,PARAM, DEV_ADDR, Text, "読出デバイス番号", "8020"
+,PARAM, POINTS, Text, "読出点数", "1"
+,PARAM, ADDR_CTRL, Text, "復旧制御アドレス", "7FFF"
+,PARAM, VAL_RECOVERY, Text, "復旧制御設定値", "0x0002"
+,PARAM, RESULT_DATA, Range, "レジスタデータ", ""
+,SEQUENCE, #READ_START#, Mc_ReadWord, "$DEV_TYPE$$DEV_ADDR$", "$POINTS$", "RESULT_DATA", "HEX"
+,SEQUENCE, 20, Judge, NEQ, "$RESULT_DATA$", "ERROR_TIMEOUT", #ERR_RECOVERY#
+,SEQUENCE, 30, Judge, NEQ, "$RESULT_DATA$", "ERROR_INCOMPLETE", #ERR_RECOVERY#
+,SEQUENCE, 40, Exit
+,SEQUENCE, #ERR_RECOVERY#, Mc_WriteWord, "$DEV_TYPE$$ADDR_CTRL$", "$VAL_RECOVERY$"
+,SEQUENCE, 60, Jump, #READ_START#
+
+; ------------------------------------------------------------------------------
+; コマンド定義: READ_END (読み出し終了・復旧)
+; ------------------------------------------------------------------------------
+COMMAND, "READ_END", ON
+,PARAM, DEV_TYPE, List, "デバイス種別", "ZR", "D", "W", "R", "TN", "CN"
+,PARAM, ADDR_STATUS, Text, "状態確認アドレス", "7FFE"
+,PARAM, ADDR_CTRL, Text, "制御コマンドアドレス", "7FFF"
+,PARAM, POINTS, Text, "アクセス点数", "1"
+,PARAM, VAL_FINISH_1, Text, "終了処理設定値1", "0x0001"
+,PARAM, VAL_RESET, Text, "復旧初期設定値", "0x0000"
+,PARAM, STATUS, Work, "判定結果", ""
+,SEQUENCE, 10, Mc_WriteWord, "$DEV_TYPE$$ADDR_CTRL$", "$VAL_FINISH_1$"
+,SEQUENCE, #CHECK_LOOP#, Mc_ReadWord, "$DEV_TYPE$$ADDR_STATUS$", "$POINTS$", "STATUS", "DEC"
+,SEQUENCE, 30, Judge, EQU, "$STATUS$", "0x0001", #CHECK_LOOP#
+,SEQUENCE, 40, Mc_WriteWord, "$DEV_TYPE$$ADDR_CTRL$", "$VAL_RESET$"
+,SEQUENCE, 50, Exit
+
+; ------------------------------------------------------------------------------
+; コマンド定義: PORT_CLOSE (通信ポート切断)
+; ------------------------------------------------------------------------------
+COMMAND, "PORT_CLOSE"
+,PARAM, DEV_TYPE, List, "デバイス種別", "ZR", "D", "W", "R", "TN", "CN"
+,PARAM, ADDR_CTRL, Text, "制御コマンドアドレス", "7FFF"
+,PARAM, VAL_RESET, Text, "復旧初期設定値", "0x0000"
+,SEQUENCE, 10, Mc_WriteWord, "$DEV_TYPE$$ADDR_CTRL$", "$VAL_RESET$"
+,SEQUENCE, 20, Mc_Close
+,SEQUENCE, 30, Exit

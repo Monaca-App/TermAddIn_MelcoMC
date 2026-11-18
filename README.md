@@ -24,7 +24,7 @@ VBA マクロを一切記述することなく、 **標準の `.xlsx`（マク�
 > [!NOTE]
 > **利用前提とライセンス体系**  
 > 本エクステンションは [TermAddIn 本体](https://github.com/Monaca-App/TermAddIn) 上で動作します。  
-> TermAddIn ではプロトコル毎に個別ライセンスを設ける体系を採用しており、本機能のご利用には **`TermAddIn_MelcoMC` 個別ライセンス（料金未定・準備中）** が適用されます（現在は評価期間として全機能を無償でご試用いただけます）。
+> TermAddIn ではプロトコル毎に個別ライセンスを設ける体系を採用しており、本機能のご利用には **`TermAddIn_MelcoMC` 個別ライセンス（料金未定・準備中）** が適用されます（なお、 **TermAddIn 本体** は現在 **近日公開** であり、全機能を無償でご試用いただける **評価期間は公開時に設定** いたします）。
 
 ---
 
@@ -115,7 +115,7 @@ sequenceDiagram
 
 ---
 
-## 🔰 シーケンス記述例（Excel セル設定）
+## 🔰 シーケンス記述例・同梱サンプル資材（`Sample/MelcoMC/`）
 
 QnA 互換 3E バイナリフレームを用いた MELSEC データレジスタ（D100〜D101）一括読出の構成例です。
 
@@ -129,6 +129,12 @@ QnA 互換 3E バイナリフレームを用いた MELSEC データレジスタ�
 ,SEQUENCE, 040, Exit
 ```
 
+### 同梱サンプルマクロ・AI自動生成プロンプト集
+QnA 互換 3E フレーム（TCP/UDP・バイナリ/ASCII）の全 9 コマンドに対応した動作確認用マクロスクリプト（CSV）および AI 自動生成プロンプトが **`Sample/MelcoMC/`** に収録されています（Excel リボンの **「マニュアル配置 (`Make_Doc`)」** 実行時には `<設定場所>\Sample\TermAddIn\MelcoMC\` へ自動展開されます）。
+
+* **[`Sample/MelcoMC/MelcoMC.csv`](./Sample/MelcoMC/MelcoMC.csv)**: MELSEC MC プロトコル（3E フレーム）汎用マクロスクリプトサンプル
+* **[`Sample/MelcoMC/MelcoMC_prompt.md`](./Sample/MelcoMC/MelcoMC_prompt.md)**: MELSEC MC プロトコル用マクロスクリプト AI 自動生成プロンプト
+
 ---
 
 ## 💳 ライセンス・購入プラン（TermAddIn_MelcoMC）
@@ -137,7 +143,7 @@ QnA 互換 3E バイナリフレームを用いた MELSEC データレジスタ�
 > **料金プランおよび正式販売について**  
 > 本エクステンション（`TermAddIn_MelcoMC`）の販売料金およびライセンスプラン（買い切り・サブスクリプション）は **現在検討中（未定）** です。  
 > 正式な価格およびお申込み受付開始時期が決定次第、本ドキュメントおよび [Monaca アプリ工房ポータル](https://github.com/Monaca-App/store) にてご案内いたします。  
-> 現在は評価版として全機能をご試用いただけます。
+> なお、[TermAddIn 本体](https://github.com/Monaca-App/TermAddIn) は現在 **近日公開** となっており、全機能を無償でご試用いただける **評価期間は公開時に設定** いたします。
 
 | プラン | 価格 | お支払い・お申込み |
 | :--- | :---: | :---: |
