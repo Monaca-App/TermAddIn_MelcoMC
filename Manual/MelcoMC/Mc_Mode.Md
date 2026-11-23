@@ -2,7 +2,10 @@
 
 ## 概要
 
-**Mc_Mode** は、MELSEC MC プロトコル（3E フレーム）における交信経路情報（ネットワーク番号、PC 番号）および電文形式（ **バイナリ形式** または **ASCII 形式** ）を動的に設定・切り替えるコマンドです。
+**Mc_Mode** は、MELSEC MC プロトコル（ **TCP・バイナリ 3E フレーム専用** ）における交信経路情報（ネットワーク番号、PC 番号）およびフレーム形式プロパティを動的に変更する通信設定系コマンドです。
+PLC との通信電文を送出する前に、アクセス先ネットワークや局番をマクロ上から切り替える用途で使用します。
+
+> 💡 **補足**: 現行の `TermAnalysis.MelcoMC` エンジン（`Mc3EFrameEngine`）は **TCP・バイナリ 3E フレーム専用** で動作します（UDP および ASCII 3E フレームの電文構築・解析は未実装です）。また、本コマンドは **第 1 引数の指定が必須** です。
 
 ---
 
@@ -11,16 +14,18 @@
 ### コマンド構文
 
 ```csv
-,SEQUENCE, [ステップキー], Mc_Mode, "[NetworkNo: 0]", "[PcNo: 255]", "[Format: Binary]"
+,SEQUENCE, [ステップキー], Mc_Mode, [NetworkNo], "[PcNo: 255]", "[Format: Binary]"
 ```
+
+※ **最低 1 引数の指定が必須** です（引数 0 個または 4 個以上は `ValidateParamRange(1, 3)` によりエラー停止します）。
 
 ### パラメータ（引数）一覧
 
 | 引数位置 | 引数名 | 必須/任意 | 説明・制約 |
 | :--- | :--- | :---: | :--- |
-| 第 1 引数 | `NetworkNo` | 任意 | 宛先ネットワーク番号（`0`〜`255`、省略時既定値: `"0"`＝自局ネットワーク）。 |
-| 第 2 引数 | `PcNo` | 任意 | 宛先 PC 番号（`0`〜`255`、省略時既定値: `"255"`［`0xFF`：自局アクセス］）。 |
-| 第 3 引数 | `Format` | 任意 | 3E フレームの表現形式（`"Binary"` または `"ASCII"`、省略時既定値: `"Binary"`）。 |
+| 第 1 引数 | `NetworkNo` | **必須** | 宛先ネットワーク番号（`0`〜`255` の整数文字列、例: `"0"`＝自局ネットワーク）。`byte.TryParse` 成功時のみ `Mc3EFrameEngine.DefaultNetworkNo` を更新し、空文字 `""` や範囲外・非数値文字列の場合は現在値を維持します。 |
+| 第 2 引数 | `PcNo` | 任意 | 宛先 PC 番号（`0`〜`255` の整数文字列、省略時既定値: `"255"`［`0xFF`：自局アクセス］）。`byte.TryParse` 成功時のみ `Mc3EFrameEngine.DefaultPcNo` を更新し、空文字や範囲外・非数値の場合は現在値を維持します。 |
+| 第 3 引数 | `Format` | 任意 | フレーム形式プロパティ指定（省略時既定値: `"Binary"`。先頭が `"A"` で始まる場合は `McFrameFormat.Ascii`、それ以外は `McFrameFormat.Binary` を `Mc_ModeCommand.FrameFormat` に設定しますが、実通信の電文構築・解析エンジンは **バイナリ 3E 専用** です）。 |
 
 ---
 
@@ -30,7 +35,7 @@
 * **動的置換（`$`）**: 引数内で `$PARAMキー$` のように記述すると、実行時に変数プール（PARAM）の値へ動的置換されます。（適用可能な引数: 全引数対応）
 * **ジャンプ先指定（`#`）**: 本コマンドはジャンプ制御を行わないため適用されません。（適用可能な引数: 非適用）
 * **共通コマンド指定（`@`）**: 本コマンドは外部マクロを呼び出さないため、共通コマンド呼び出し記法は適用されません。（適用可能な引数: 非適用）
-* **カンマのエスケープ**: 通信条件文字列（例: `"9600,E,7,1"`）や複数データのカンマ区切り値を単一引数として渡す場合は、必ず `"..."` と二重引用符で囲んで記述します。
+* **カンマのエスケープ**: 引数自体にカンマを含める場合は、必ず `"..."` と二重引用符で囲んで記述します。
 * **エイリアス（別名）**: `Analysis_Mc_Mode`, `Sqn_Mc_Mode`
 
 ---
@@ -42,20 +47,26 @@
 ※COMMAND ブロック配下の子要素行（PARAM, SEQUENCE）は必ず行頭カンマから開始し、スペースインデントや行末コメント（`;`）は記述しないでください。
 
 ```csv
-COMMAND, "SAMPLE_MC_MODE", ""
-; 1. 自局アクセス（Net:0, PC:255）・ASCII 形式へ切り替え
-,SEQUENCE, 010, Mc_Mode, "0", "255", "ASCII"
+COMMAND, "SAMPLE_MC_MODE", "RESULT_D0"
+,PARAM, "RESULT_D0", Work, "D0読出結果", ""
+; 1. 自局アクセス（Net:0, PC:255）・バイナリ 3E 形式を設定
+,SEQUENCE, 010, Mc_Mode, "0", "255", "Binary"
 ,SEQUENCE, 020, Mc_Open, "192.168.1.10", "5000", "TCP"
-; 2. ASCII 形式で D0 から 4 ワード読出
-,SEQUENCE, 030, Mc_ReadWord, "D0", 4, "@RESULT_D0"
-,SEQUENCE, 040, Mc_Close
-,SEQUENCE, 050, Exit
+; 2. バイナリ 3E フレームで D0 から 1 ワード読出し RESULT_D0 へ格納
+,SEQUENCE, 030, Mc_ReadWord, "D0", 1, "RESULT_D0", "DEC"
+; 3. 読出値が 0 以上か判定（不成立時は #NG_PROC# へ分岐）
+,SEQUENCE, 040, Judge, "GE", "$RESULT_D0$", "0", "#NG_PROC#"
+,SEQUENCE, 050, Mc_Close
+,SEQUENCE, 060, Exit, "$RESULT_D0$", 0
+; 条件不成立時のクローズ＆異常終了経路
+,SEQUENCE, #NG_PROC#, Mc_Close
+,SEQUENCE, 080, Exit, "NG", -1
 ```
 
 ### 実行時の挙動・変数変化
 
-* **実行前の状態**: Term 通信エンジンが初期化され、必要な通信パラメータおよび変数プール（`PARAM`）が準備されている状態。
-* **実行後の状態**: ステップ実行により `Mc_Mode` の通信制御・プロトコル処理が正常に遂行され、結果または回線状態が更新されます。
+* **実行前の状態**: Term 通信エンジンが初期化され、変数プール（`PARAM`）に `"RESULT_D0"` が定義されている状態。
+* **実行後の状態**: `Mc_Mode` により通信を行わずメモリ上の `DefaultNetworkNo = 0`、`DefaultPcNo = 255`、`FrameFormat = Binary` が更新されます。TCP 接続確立後に `D0` の 10 進読出値が `"RESULT_D0"` へ格納され、`0` 以上であれば回線を閉じて正常終了し、未満であれば `#NG_PROC#` へ分岐して回線切断後にエラー終了します（※通信タイムアウト時はステップ `030` で即座に停止します）。
 
 ---
 
@@ -64,22 +75,21 @@ COMMAND, "SAMPLE_MC_MODE", ""
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Script as "シーケンス実行エンジン"
+    participant Driver as "TermSequenceDriver (実行エンジン)"
     participant Cmd as "Mc_ModeCommand"
-    participant Trans as "MelcoMC 通信トランスポート"
-    participant Buf as "受信バッファ / 変数プール"
+    participant Engine as "Mc3EFrameEngine (静的設定)"
 
-    Script->>Cmd: Func(parent, param)
+    Driver->>Driver: ライセンス検証 (ValidateStep)
+    Driver->>Cmd: Func(parent, param)
     activate Cmd
-    Cmd->>Cmd: ライセンス・パラメータ範囲検証 ($PARAM$ 展開)
-    alt 引数および通信状態が正常な場合
-        Cmd->>Trans: プロトコル電文送受信 / 回線制御実行
-        Trans-->>Cmd: 正常応答フレーム / ステータス返却
-        Cmd->>Buf: 結果格納・状態更新 (IsCommandGo = true)
-        Cmd-->>Script: 正常完了 (次ステップへ進行)
-    else パラメータ不正・タイムアウト・異常応答の場合
-        Cmd->>Cmd: エラーログ出力 (_log.LogError)
-        Cmd-->>Script: 安全停止またはエラー結果格納
+    Cmd->>Cmd: ValidateParamRange(1, 3) ＆ $PARAM$ 展開
+    alt 引数個数が 1〜3 個の範囲内の場合
+        Cmd->>Engine: DefaultNetworkNo / DefaultPcNo 更新 (byte.TryParse 成功時)
+        Cmd->>Cmd: FrameFormat プロパティ更新 (IsCommandGo = true)
+        Cmd-->>Driver: 正常完了 (次ステップへ進行)
+    else 引数 0 個または 4 個以上の場合
+        Cmd->>Cmd: エラーログ出力 (_log.LogError) ＆ SetErrorAndHalt
+        Cmd-->>Driver: 異常停止 (IsCommandGo = false)
     end
     deactivate Cmd
 ```
@@ -90,10 +100,10 @@ sequenceDiagram
 
 入力データの異常や実行時エラーに対し、解析・実行エンジンが実行するセーフティ規約です。
 
-1. **引数範囲・プロトコル書式バリデーション保護**:
-   - 必須引数の欠落、デバイス表記・数値範囲の不正、または余剰引数が指定された場合は `_log.LogError` に詳細を記録し、`SetErrorAndHalt` により異常電文の送出を未然に遮断します。
-2. **通信タイムアウト・異常応答・排他ドメイン保護**:
-   - 相手機器の無応答タイムアウト、NAK／異常終了コード応答、または他通信ドメインとの排他競合が発生した場合は、例外クラッシュを起こさず安全にエラーハンドリングを行います。
+1. **引数個数バリデーション保護**:
+   - 引数が省略された場合（0 個）または 4 個以上指定された場合は、`ValidateParamRange(1, 3)` により `_log.LogError` に記録し、`SetErrorAndHalt` で実行を安全に停止します。
+2. **範囲外数値の安全フォールバックおよび例外保護**:
+   - `NetworkNo` や `PcNo` に空文字や `0`〜`255` 以外の文字列が渡された場合、`byte.TryParse` により例外を出さず直前の設定値を維持したまま `IsCommandGo = true` で継続します。万一予期せぬ例外が発生した場合は `catch` 節で `_log.LogCritical` に記録し、`SetErrorAndHalt(-1, ex.Message)` で安全停止します。
 
 ---
 
@@ -111,5 +121,5 @@ sequenceDiagram
 
 | No | テストカテゴリ | テスト条件（入力値） | 期待される結果（出力値） | 検証の目的 / 観点 |
 | :---: | :--- | :--- | :--- | :--- |
-| **1** | 正常系 | 引数 `"1"`, `"254"`, `"Binary"` を指定して実行 | `!param.HasError` かつ `param.IsCommandGo == true`、`DefaultNetworkNo == 1`、`DefaultPcNo == 254`、`FrameFormat == McFrameFormat.Binary` となる | ネットワーク番号・PC 番号・フレーム形式の動的変更検証 |
-| **2** | 異常系 | 引数なしまたは 4 個以上の指定（`ValidateParamRange(1, 3)` 違反）、および設定処理中の例外発生 | 引数範囲外エラー出力による早期リターン、または `_log.LogCritical` 記録と `SetErrorAndHalt(-1, ex.Message)` による安全停止 | 引数個数境界ガードおよびモード変更例外時のクラッシュ防御検証 |
+| **1** | 正常系 | 引数 `"1"`, `"254"`, `"Binary"` を指定して `Func(null, param)` を実行 | `!param.HasError` かつ `param.IsCommandGo == true`、`DefaultNetworkNo == 1`、`DefaultPcNo == 254` となる | ネットワーク番号・PC 番号・フレーム形式の動的変更検証 |
+| **2** | 異常系 | 引数 0 個（`new TermSequence { Name = "Mc_Mode" }`）で `Func(null, invalidParam)` を実行 | `ValidateParamRange(1, 3)` により拒否され、`invalidParam.HasError == true` かつ `!invalidParam.IsCommandGo` となる | 必須第 1 引数欠落時の引数範囲バリデーション検証 |

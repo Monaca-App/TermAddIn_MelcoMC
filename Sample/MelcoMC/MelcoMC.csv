@@ -9,12 +9,12 @@ TITLE, "シーケンサデータ収集 (MCプロトコル 3E)"
 ; コマンド定義: PORT_OPEN (通信ポート接続)
 ; ------------------------------------------------------------------------------
 COMMAND, "PORT_OPEN"
-,PARAM, NET_NO, Text, "ネットワーク番号", "0"
-,PARAM, PC_NO, Text, "PC番号", "255"
-,PARAM, FRAME_FMT, List, "フレーム形式", "Binary", "ASCII"
-,PARAM, HOST_IP, Text, "接続先IPアドレス", "192.168.1.10"
-,PARAM, PORT_NO, Text, "接続先ポート番号", "5000"
-,PARAM, PROTOCOL, List, "通信プロトコル", "TCP", "UDP"
+,PARAM, NET_NO, List, "ネットワーク番号(空欄=プロパティ)", "", "0", "1", "2"
+,PARAM, PC_NO, List, "PC番号(空欄=プロパティ)", "", "255", "0", "1", "2"
+,PARAM, FRAME_FMT, List, "フレーム形式(空欄=プロパティ)", "", "Binary", "ASCII"
+,PARAM, HOST_IP, List, "接続先IP(空欄=プロパティ)", "", "127.0.0.1", "192.168.0.10", "192.168.1.10"
+,PARAM, PORT_NO, List, "ポート番号(空欄=プロパティ)", "", "5000", "5001", "5002"
+,PARAM, PROTOCOL, List, "通信プロトコル(空欄=プロパティ)", "", "TCP", "UDP"
 ,SEQUENCE, 10, Mc_Mode, "$NET_NO$", "$PC_NO$", "$FRAME_FMT$"
 ,SEQUENCE, 20, Mc_Open, "$HOST_IP$", "$PORT_NO$", "$PROTOCOL$"
 ,SEQUENCE, 30, Exit

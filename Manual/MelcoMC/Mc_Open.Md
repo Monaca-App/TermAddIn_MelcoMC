@@ -2,8 +2,8 @@
 
 ## 概要
 
-**Mc_Open** は、設定値または引数で指定された接続先（IP アドレス / ホスト名、ポート番号、TCP / UDP プロトコル）に基づき、三菱電機 MELSEC MC プロトコル（3E フレーム）用の通信ソケットを開設するコマンドです。
-実行時に Term 通信制御の排他選択モードを **MELSEC MC モード** （`TermAnalysis.MelcoMC.dll`）へ確定させます。
+**Mc_Open** は、設定値または引数で指定された接続先（IP アドレス / ホスト名、TCP ポート番号）に基づき、三菱電機 MELSEC MC プロトコル（ **TCP・バイナリ 3E フレーム専用** ）用の通信ソケットを開設する通信制御系コマンドです。
+`SocketTransportCore.Shared.Connect` を介して接続を確立し、既存の TCP ソケット接続がある場合は安全にクローズした上で再接続を行います（UDP および ASCII 3E フレームは未実装です）。
 
 ---
 
@@ -15,15 +15,15 @@
 ,SEQUENCE, [ステップキー], Mc_Open, "[Host: 192.168.1.10]", "[Port: 5000]", "[Protocol: TCP]"
 ```
 
-※ 引数を省略した場合は、UI プロパティ設定画面（または `Mc_Mode`）の現在の設定値が自動適用されます。
+※ 引数を省略した場合は、UI プロパティ設定画面の現在の設定値（未取得時は既定値 `"192.168.1.10"`, `5000`）およびネットワーク番号・PC 番号・CPU 監視タイマ換算値が自動適用されます。
 
 ### パラメータ（引数）一覧
 
 | 引数位置 | 引数名 | 必須/任意 | 説明・制約 |
 | :--- | :--- | :---: | :--- |
-| 第 1 引数 | `Host` | 任意 | 接続先 PLC の IP アドレスまたはホスト名（`"192.168.1.10:5000"` 形式も可、省略時既定値: `"192.168.1.10"`）。 |
-| 第 2 引数 | `Port` | 任意 | 接続先ポート番号文字列（省略時既定値: `"5000"`）。 |
-| 第 3 引数 | `Protocol` | 任意 | 通信トランスポート層プロトコル（`"TCP"` または `"UDP"`、省略時既定値: `"TCP"`）。 |
+| 第 1 引数 | `Host` | 任意 | 接続先 PLC の IP アドレスまたはホスト名（`"192.168.1.10:5000"` のように `:Port` 付きの形式も可、省略時既定値: `"192.168.1.10"`）。 |
+| 第 2 引数 | `Port` | 任意 | 接続先 TCP ポート番号の整数文字列（有効範囲 `1`〜`65535`、省略時既定値: `"5000"`）。範囲外や非数値文字列が渡された場合はエラー停止せず、直前の有効ポート値（UI 設定値、第 1 引数の `:Port`、または既定値 `5000`）へフォールバックします。 |
+| 第 3 引数 | `Protocol` | 任意 | 互換用の予約引数（既定値: `"TCP"`）。`Func` 内では参照されず、実通信は常に **TCP（バイナリ 3E フレーム）固定** で接続されます。 |
 
 ---
 
@@ -33,7 +33,7 @@
 * **動的置換（`$`）**: 引数内で `$PARAMキー$` のように記述すると、実行時に変数プール（PARAM）の値へ動的置換されます。（適用可能な引数: 全引数対応）
 * **ジャンプ先指定（`#`）**: 本コマンドはジャンプ制御を行わないため適用されません。（適用可能な引数: 非適用）
 * **共通コマンド指定（`@`）**: 本コマンドは外部マクロを呼び出さないため、共通コマンド呼び出し記法は適用されません。（適用可能な引数: 非適用）
-* **カンマのエスケープ**: 通信条件文字列（例: `"9600,E,7,1"`）や複数データのカンマ区切り値を単一引数として渡す場合は、必ず `"..."` と二重引用符で囲んで記述します。
+* **カンマのエスケープ**: 引数自体にカンマを含める場合は、必ず `"..."` と二重引用符で囲んで記述します。
 * **エイリアス（別名）**: `Analysis_Mc_Open`, `Sqn_Mc_Open`
 
 ---
@@ -45,20 +45,25 @@
 ※COMMAND ブロック配下の子要素行（PARAM, SEQUENCE）は必ず行頭カンマから開始し、スペースインデントや行末コメント（`;`）は記述しないでください。
 
 ```csv
-COMMAND, "SAMPLE_MC_OPEN", ""
+COMMAND, "SAMPLE_MC_OPEN", "RCV_DATA"
+,PARAM, "RCV_DATA", Work, "D100読出結果", ""
 ; 1. MELSEC MC プロトコル（IP: 192.168.1.10, Port: 5000, TCP）でオープン
-,SEQUENCE, 010, Mc_Open, "192.168.1.10:5000", "TCP"
-; 2. D100 から 2 ワード読出
-,SEQUENCE, 020, Mc_ReadWord, "D100", 2, "@RCV_DATA"
-; 3. ソケット切断
-,SEQUENCE, 030, Mc_Close
-,SEQUENCE, 040, Exit
+,SEQUENCE, 010, Mc_Open, "192.168.1.10", "5000", "TCP"
+; 2. D100 から 1 ワード（DEC）読出し RCV_DATA へ格納
+,SEQUENCE, 020, Mc_ReadWord, "D100", 1, "RCV_DATA", "DEC"
+; 3. 読出値が閾値 100 以上か判定（不成立時は #NG_PROC# へ分岐）
+,SEQUENCE, 030, Judge, "GE", "$RCV_DATA$", "100", "#NG_PROC#"
+,SEQUENCE, 040, Mc_Close
+,SEQUENCE, 050, Exit, "$RCV_DATA$", 0
+; 条件不成立時のクローズ＆異常終了経路
+,SEQUENCE, #NG_PROC#, Mc_Close
+,SEQUENCE, 070, Exit, "NG", -1
 ```
 
 ### 実行時の挙動・変数変化
 
-* **実行前の状態**: Term 通信エンジンが初期化され、必要な通信パラメータおよび変数プール（`PARAM`）が準備されている状態。
-* **実行後の状態**: ステップ実行により `Mc_Open` の通信制御・プロトコル処理が正常に遂行され、結果または回線状態が更新されます。
+* **実行前の状態**: Term 通信エンジンが初期化され、変数プール（`PARAM`）に `"RCV_DATA"` が定義されている状態。
+* **実行後の状態**: `Mc_Open` により `SocketTransportCore.Shared.Connect("192.168.1.10", 5000)` が実行されて TCP ソケット接続が確立され、続く `Mc_ReadWord` で読み出された値が `"RCV_DATA"` に格納されます。値が `100` 以上であればソケットを閉じて正常終了し、未満であれば `#NG_PROC#` へ分岐してクローズ後にエラー終了します。
 
 ---
 
@@ -67,24 +72,32 @@ COMMAND, "SAMPLE_MC_OPEN", ""
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Script as "スクリプト実行エンジン"
+    participant Driver as "TermSequenceDriver (実行エンジン)"
     participant Cmd as "Mc_OpenCommand"
-    participant Socket as "SocketTransportCore"
+    participant Socket as "SocketTransportCore.Shared"
     participant PLC as "MELSEC シーケンサ"
 
-    Script->>Cmd: "Execute"
-    Cmd->>Cmd: "引数 (Host, Port, Protocol) の解析"
-    Cmd->>Socket: "Open (TCP または UDP)"
-    Socket->>PLC: "接続要求"
-    PLC-->>Socket: "接続応答"
-    Socket-->>Cmd: "接続成功"
-    Cmd-->>Script: "Success"
-    alt パラメータおよびプロトコル検証が正常な場合
-        Cmd-->>Script: 正常完了 (IsCommandGo = true)
-    else 引数範囲外または通信状態異常の場合
-        Cmd->>Cmd: エラーログ出力 (_log.LogError)
-        Cmd-->>Script: 安全停止 (SetErrorAndHalt)
+    Driver->>Driver: ライセンス検証 (ValidateStep)
+    Driver->>Cmd: Func(parent, param)
+    activate Cmd
+    Cmd->>Cmd: IsExtensionLicensed("MelcoMC") ＆ ValidateParamRange(0, 3) ＆ Host/Port 解析
+    alt ライセンス有効 かつ 引数 0〜3 個の場合
+        Cmd->>Socket: Connect(host, port)
+        Socket->>PLC: TCP 接続要求
+        alt TCP 接続成功 (または IsSimulationMode == true)
+            PLC-->>Socket: 接続確立
+            Socket-->>Cmd: true
+            Cmd-->>Driver: 正常完了 (IsCommandGo = true)
+        else ソケット接続失敗 (!connected かつ実回線モード)
+            Socket-->>Cmd: false
+            Cmd->>Cmd: SetErrorAndHalt(-1, failMsg)
+            Cmd-->>Driver: 異常停止 (IsCommandGo = false)
+        end
+    else ライセンス未認証 または 引数 4 個以上の場合
+        Cmd->>Cmd: _log.LogError ＆ SetErrorAndHalt
+        Cmd-->>Driver: 異常停止 (IsCommandGo = false)
     end
+    deactivate Cmd
 ```
 
 ---
@@ -93,10 +106,10 @@ sequenceDiagram
 
 入力データの異常や実行時エラーに対し、解析・実行エンジンが実行するセーフティ規約です。
 
-1. **引数範囲・プロトコル書式バリデーション保護**:
-   - 必須引数の欠落、デバイス表記・数値範囲の不正、または余剰引数が指定された場合は `_log.LogError` に詳細を記録し、`SetErrorAndHalt` により異常電文の送出を未然に遮断します。
-2. **通信タイムアウト・異常応答・排他ドメイン保護**:
-   - 相手機器の無応答タイムアウト、NAK／異常終了コード応答、または他通信ドメインとの排他競合が発生した場合は、例外クラッシュを起こさず安全にエラーハンドリングを行います。
+1. **ライセンス検証および引数範囲ガード**:
+   - `MelcoMC` 拡張ライセンスが未認証の場合はエラーコード `-100` で即座に停止し、引数が 4 個以上指定された場合（`ValidateParamRange(0, 3)` 違反）も `_log.LogError` に記録して停止します。また、第 2 引数 `Port` が `1`〜`65535` 以外の文字列である場合は既定ポート（または UI 設定値）へ安全にフォールバックします。
+2. **ソケット再接続制御と接続失敗時の安全停止**:
+   - `SocketTransportCore.Shared.Connect` により既存 TCP ソケットがあれば安全にクローズしてから新規接続を確立します。実回線モードで接続に失敗した場合（`!connected`）は `SetErrorAndHalt(-1, failMsg)` で停止し、予期せぬ例外発生時は `_log.LogCritical` と `SetErrorAndHalt(-1, ex.Message)` でクラッシュを防ぎます。
 
 ---
 
@@ -115,4 +128,4 @@ sequenceDiagram
 | No | テストカテゴリ | テスト条件（入力値） | 期待される結果（出力値） | 検証の目的 / 観点 |
 | :---: | :--- | :--- | :--- | :--- |
 | **1** | 正常系 | `SocketTransportCore.Shared.IsSimulationMode = true` 環境下で引数 `"127.0.0.1"`, `"5000"` を指定して実行 | `!param.HasError` かつ `param.IsCommandGo == true`、`Host == "127.0.0.1"`、`Port == 5000` となる | 接続先 IP アドレス・ポート番号の適用および MC ソケット接続確立の検証 |
-| **2** | 異常系 | 引数 4 個以上の過剰指定（`ValidateParamRange(0, 3)` 違反）または実回線モードでのソケット接続失敗（`!connected`） | 引数検証エラーによる早期リターン、または `SetErrorAndHalt(-1, failMsg)` により安全に停止する | 引数境界チェックおよび PLC 未応答・接続拒否時のフェイルセーフ検証 |
+| **2** | 異常系 | 余剰引数 4 個（`"127.0.0.1"`, `"5000"`, `"3000"`, `"EXTRA_INVALID"`）を指定して実行 | `ValidateParamRange(0, 3)` により拒否され、`invalidParam.HasError == true` かつ `!invalidParam.IsCommandGo` となる | 引数上限超過時のバリデーション拒否検証 |

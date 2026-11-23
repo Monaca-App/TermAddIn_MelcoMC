@@ -2,7 +2,8 @@
 
 ## 概要
 
-**Mc_Close** は、`Mc_Open` により開設された MELSEC MC プロトコル通信ソケット（TCP または UDP）を安全に切断し、通信バッファおよびネットワークリソースを完全に解放するコマンドです。
+**Mc_Close** は、`Mc_Open` により開設された MELSEC MC プロトコル（TCP・バイナリ 3E フレーム）用の TCP 通信ソケットを `SocketTransportCore.Shared.Disconnect()` により安全に切断し、ネットワークリソースを解放する通信制御系コマンドです。
+一連の PLC 通信シーケンスの終了時や、判定分岐後の終了処理においてソケット接続を確実にクローズする用途で使用します。
 
 ---
 
@@ -16,9 +17,9 @@
 
 ### パラメータ（引数）一覧
 
-| 引数位置 | パラメータ名 | 必須/任意 | 型・制約 | 説明 |
-| :--- | :--- | :---: | :--- | :--- |
-| （引数なし） | - | - | - | 接続中の通信ソケットを切断し解放します。 |
+| 引数位置 | 引数名 | 必須/任意 | 説明・制約 |
+| :--- | :--- | :---: | :--- |
+| （引数なし） | - | - | `ParameterSpec` 上の定義引数は 0 個です。接続中の TCP 通信ソケットを切断しリソースを解放します。 |
 
 ---
 
@@ -28,7 +29,7 @@
 * **動的置換（`$`）**: 本コマンドは引数を取らないため、引数に対する `$PARAMキー$` 動的置換は適用されません。（適用可能な引数: 非適用）
 * **ジャンプ先指定（`#`）**: 本コマンドはジャンプ制御を行わないため適用されません。（適用可能な引数: 非適用）
 * **共通コマンド指定（`@`）**: 本コマンドは外部マクロを呼び出さないため、共通コマンド呼び出し記法は適用されません。（適用可能な引数: 非適用）
-* **カンマのエスケープ**: 通信条件文字列（例: `"9600,E,7,1"`）や複数データのカンマ区切り値を単一引数として渡す場合は、必ず `"..."` と二重引用符で囲んで記述します。
+* **カンマのエスケープ**: 本コマンドは引数を取らないため適用されません。
 * **エイリアス（別名）**: `Analysis_Mc_Close`, `Sqn_Mc_Close`
 
 ---
@@ -41,9 +42,9 @@
 
 ```csv
 COMMAND, "SAMPLE_MC_CLOSE", ""
-; 1. 回線オープン
-,SEQUENCE, 010, Mc_Open, "192.168.1.10:5000", "TCP"
-; 2. ビットデバイス一括書込
+; 1. 回線オープン（TCP ポート 5000）
+,SEQUENCE, 010, Mc_Open, "192.168.1.10", "5000", "TCP"
+; 2. ビットデバイス M100〜M101 へ一括書込
 ,SEQUENCE, 020, Mc_WriteBit, "M100", "1,0"
 ; 3. 回線切断・リソース解放
 ,SEQUENCE, 030, Mc_Close
@@ -52,8 +53,8 @@ COMMAND, "SAMPLE_MC_CLOSE", ""
 
 ### 実行時の挙動・変数変化
 
-* **実行前の状態**: Term 通信エンジンが初期化され、必要な通信パラメータおよび変数プール（`PARAM`）が準備されている状態。
-* **実行後の状態**: ステップ実行により `Mc_Close` の通信制御・プロトコル処理が正常に遂行され、結果または回線状態が更新されます。
+* **実行前の状態**: `Mc_Open` により `SocketTransportCore.Shared` の TCP ソケット接続が確立され、`Mc_WriteBit` によるビット書込が完了している状態。
+* **実行後の状態**: ステップ `030` の `Mc_Close` により `SocketTransportCore.Shared.Disconnect()` が呼び出されて TCP ソケットが安全に切断・解放され、`param.IsCommandGo = true` となってステップ `040` の `Exit` で正常終了します。
 
 ---
 
@@ -62,22 +63,22 @@ COMMAND, "SAMPLE_MC_CLOSE", ""
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Script as "シーケンス実行エンジン"
+    participant Driver as "TermSequenceDriver (実行エンジン)"
     participant Cmd as "Mc_CloseCommand"
-    participant Trans as "MelcoMC 通信トランスポート"
-    participant Buf as "受信バッファ / 変数プール"
+    participant Socket as "SocketTransportCore.Shared"
 
-    Script->>Cmd: Func(parent, param)
+    Driver->>Driver: ライセンス検証 (ValidateStep)
+    Driver->>Cmd: Func(parent, param)
     activate Cmd
-    Cmd->>Cmd: ライセンス・パラメータ範囲検証 ($PARAM$ 展開)
-    alt 引数および通信状態が正常な場合
-        Cmd->>Trans: プロトコル電文送受信 / 回線制御実行
-        Trans-->>Cmd: 正常応答フレーム / ステータス返却
-        Cmd->>Buf: 結果格納・状態更新 (IsCommandGo = true)
-        Cmd-->>Script: 正常完了 (次ステップへ進行)
-    else パラメータ不正・タイムアウト・異常応答の場合
-        Cmd->>Cmd: エラーログ出力 (_log.LogError)
-        Cmd-->>Script: 安全停止またはエラー結果格納
+    Cmd->>Socket: Disconnect()
+    alt ソケット切断が正常完了した場合
+        Socket-->>Cmd: 切断完了
+        Cmd->>Cmd: param.IsCommandGo = true (param != null 時)
+        Cmd-->>Driver: 正常完了 (次ステップへ進行)
+    else 切断処理中に予期せぬ例外が発生した場合
+        Socket-->>Cmd: 例外スロー
+        Cmd->>Cmd: _log.LogCritical ＆ SetErrorAndHalt(-1, ex.Message)
+        Cmd-->>Driver: 異常停止 (IsCommandGo = false)
     end
     deactivate Cmd
 ```
@@ -88,10 +89,10 @@ sequenceDiagram
 
 入力データの異常や実行時エラーに対し、解析・実行エンジンが実行するセーフティ規約です。
 
-1. **引数範囲・プロトコル書式バリデーション保護**:
-   - 必須引数の欠落、デバイス表記・数値範囲の不正、または余剰引数が指定された場合は `_log.LogError` に詳細を記録し、`SetErrorAndHalt` により異常電文の送出を未然に遮断します。
-2. **通信タイムアウト・異常応答・排他ドメイン保護**:
-   - 相手機器の無応答タイムアウト、NAK／異常終了コード応答、または他通信ドメインとの排他競合が発生した場合は、例外クラッシュを起こさず安全にエラーハンドリングを行います。
+1. **引数仕様と `null` パラメータ耐性**:
+   - `ParameterSpec` は引数 0 個として定義されており、統一コマンド検証パイプライン経由で余剰引数が渡された場合はエラー停止します。また、`Func` 直接呼び出し時は `param == null` の場合でも `NullReferenceException` を起こさず安全に `Disconnect()` のみを実行します。
+2. **ソケット切断時の例外防御**:
+   - 未接続状態での重複呼び出し時もエラーにならず安全に完了します。万一ソケット破棄処理中に予期せぬ例外が発生した場合は、`catch` 節で `_log.LogCritical` に記録し、`param?.SetErrorAndHalt(-1, ex.Message)` によりクラッシュを防いで安全停止します。
 
 ---
 
@@ -109,5 +110,5 @@ sequenceDiagram
 
 | No | テストカテゴリ | テスト条件（入力値） | 期待される結果（出力値） | 検証の目的 / 観点 |
 | :---: | :--- | :--- | :--- | :--- |
-| **1** | 正常系 | `SocketTransportCore.Shared.IsSimulationMode = true` 環境下で引数なしで `Mc_Close` を実行 | `SocketTransportCore.Shared.Disconnect()` が実行され、`!param.HasError` かつ `param.IsCommandGo == true` となる | MC プロトコル用ソケット回線の正常切断および状態更新の検証 |
-| **2** | 異常系 | `param == null` での呼び出しまたはソケット切断処理中の例外発生 | `NullReferenceException` を起こさず終了し、例外時は `_log.LogCritical` 記録と `SetErrorAndHalt(-1, ex.Message)` で安全停止する | `null` コンテキスト耐性および回線切断例外時のクラッシュ防御検証 |
+| **1** | 正常系 | `SocketTransportCore.Shared.IsSimulationMode = true` 環境下で引数なしの `Mc_Close` を `Func(null, param)` で実行 | `!param.HasError` かつ `param.IsCommandGo == true` となる | MC プロトコル用ソケット回線の正常切断および状態更新の検証 |
+| **2** | 異常系 | `Func(null, null)`（`param == null`）を指定して実行 | 例外を発生させず安全に完了し、`!SocketTransportCore.Shared.IsConnected` が維持される | `null` パラメータ入力時の `NullReferenceException` 防御検証 |

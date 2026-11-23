@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<TermEmulatorProfile Version="1.0">
+  <Channel ChannelId="0" Enabled="true" Name="Sample MELSEC MC 3E Slave (127.0.0.1:5000)" Mode="TcpServerDevice" ProtocolKey="MelsecMc3E" ShareGlobalMemory="true">
+    <EndpointA PortName="COM10" BaudRate="9600" DataBits="8" Parity="None" StopBits="One" Handshake="None" ListenAddress="127.0.0.1" Port="5000" PipeName="TermEmulatorPipe0" />
+    <EndpointB TargetHost="127.0.0.1" TargetPort="5021" TargetPortName="COM11" TargetBaudRate="9600" />
+    <Framing DelimiterMode="IdleTimeout" IdleTimeoutMs="20" FixedFrameLength="8" CustomDelimiterHex="0D 0A" EncodingName="ASCII" DefaultTerminator="" DefaultChecksum="None" />
+    <ProtocolOptions>
+      <ProtocolOption Key="AcceptAnyRoute" Value="true" />
+      <ProtocolOption Key="Allow0101" Value="true" />
+      <ProtocolOption Key="Allow0401" Value="true" />
+      <ProtocolOption Key="Allow0403" Value="true" />
+      <ProtocolOption Key="Allow0619" Value="true" />
+      <ProtocolOption Key="Allow1401" Value="true" />
+      <ProtocolOption Key="AllowRunWrite" Value="true" />
+      <ProtocolOption Key="CpuModelName" Value="Q06UDVCPU" />
+      <ProtocolOption Key="DataCode" Value="Auto" />
+      <ProtocolOption Key="EndCode" Value="0" />
+      <ProtocolOption Key="EndCodeParam" Value="5" />
+      <ProtocolOption Key="EndCodeTrigger" Value="EveryN" />
+      <ProtocolOption Key="NetworkNo" Value="0" />
+      <ProtocolOption Key="PcNo" Value="255" />
+      <ProtocolOption Key="StationNo" Value="0" />
+      <ProtocolOption Key="UnitIo" Value="1023" />
+    </ProtocolOptions>
+    <Rules>
+      <Rule RuleId="r001" Enabled="true" Name="MC 3E Batch Read Word (0401)" Priority="10" PatternType="WildcardHex" MatchPattern="50 00 00 FF FF 03 00 ?? ?? ?? ?? 01 04 *" CaseSensitive="false" ReplyPayload="D0 00 00 FF FF 03 00 04 00 00 00 00 00" ReplyIsHex="true" ResponseDelayMs="5" AppendChecksum="None" AppendTerminator="false" MemoryWriteExpression="" />
+      <Rule RuleId="r002" Enabled="true" Name="MC 3E Batch Write Word (1401)" Priority="20" PatternType="WildcardHex" MatchPattern="50 00 00 FF FF 03 00 ?? ?? ?? ?? 01 14 *" CaseSensitive="false" ReplyPayload="D0 00 00 FF FF 03 00 02 00 00 00" ReplyIsHex="true" ResponseDelayMs="5" AppendChecksum="None" AppendTerminator="false" MemoryWriteExpression="D101=1" />
+      <Rule RuleId="r003" Enabled="true" Name="MC 3E CPU Model Read (0101)" Priority="30" PatternType="WildcardHex" MatchPattern="50 00 00 FF FF 03 00 ?? ?? ?? ?? 01 01 *" CaseSensitive="false" ReplyPayload="D0 00 00 FF FF 03 00 14 00 00 00 51 30 36 55 44 56 43 50 55 20 20 20 20 20 20 20 00 00" ReplyIsHex="true" ResponseDelayMs="5" AppendChecksum="None" AppendTerminator="false" MemoryWriteExpression="" />
+    </Rules>
+    <FaultInjection Enabled="false" Direction="TxOnly" BaseLatencyMs="40" JitterMs="15" ChunkSplitEnabled="false" ChunkSizeBytes="4" InterChunkGapMs="15" DropTrigger="EveryNPackets" DropEveryN="10" DropPercent="5" CorruptTrigger="EveryNPackets" CorruptKind="InvertLastTwoBytes" CorruptEveryN="10" CorruptPercent="5" DisconnectEveryNPackets="0" DisconnectHoldMs="500" />
+    <PeriodicEmit PeriodicEnabled="false" IntervalMs="2000" PeriodicPayload="D0 00 00 FF FF 03 00 04 00 00 00 01 00" PeriodicIsHex="true" AppendChecksum="None" AppendTerminator="false" ScenarioEnabled="false" ScenarioLoop="true">
+      <Step StepIndex="1" TriggerPattern="01 04" DelayMs="15" Payload="D0 00 00 FF FF 03 00 04 00 00 00 00 00" IsHex="true" Comment="MC 3E ワード読出応答ステップ" />
+      <Step StepIndex="2" TriggerPattern="01 14" DelayMs="15" Payload="D0 00 00 FF FF 03 00 02 00 00 00" IsHex="true" Comment="MC 3E ワード書込正常終了ステップ" />
+    </PeriodicEmit>
+  </Channel>
+</TermEmulatorProfile>
