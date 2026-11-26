@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="495" viewBox="0 0 660 495">
+  <defs>
+    <filter id="winShadow" x="-3%" y="-3%" width="106%" height="108%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#0F172A" flood-opacity="0.16" />
+    </filter>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+    <style>
+      .ui { font-family: 'Yu Gothic UI', 'Meiryo UI', 'Segoe UI', sans-serif; }
+      .mono { font-family: 'Consolas', 'BIZ UDGothic', 'MS Gothic', monospace; }
+      .grp-box { fill: #F8FAFC; stroke: #CBD5E1; stroke-width: 1.2; rx: 4; }
+      .grp-lbl { font-family: 'Yu Gothic UI', 'Meiryo UI', sans-serif; font-size: 11.5px; font-weight: 700; fill: #1E293B; }
+      .input-box { fill: #FFFFFF; stroke: #94A3B8; stroke-width: 1; rx: 3; }
+      .input-hi { fill: #EFF6FF; stroke: #2563EB; stroke-width: 1.3; rx: 3; }
+      .btn-box { fill: #FFFFFF; stroke: #94A3B8; stroke-width: 1; rx: 4; }
+      .btn-pri { fill: #2563EB; stroke: #1D4ED8; stroke-width: 1; rx: 4; }
+      .callout-box { fill: #FFFBEB; stroke: #F59E0B; stroke-width: 1.3; rx: 6; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="660" height="495" fill="#F8FAFC" rx="10" />
+
+  <g transform="translate(26, 20)" filter="url(#winShadow)">
+    <rect x="0" y="0" width="608" height="404" rx="6" fill="#F3F4F6" stroke="#94A3B8" stroke-width="1.4" />
+    <path d="M 0 6 Q 0 0 6 0 L 602 0 Q 608 0 608 6 L 608 30 L 0 30 Z" fill="url(#titleGrad)" />
+    <text x="14" y="20" class="ui" font-size="12.5" font-weight="700" fill="#FFFFFF">通信ポートのプロパティ — [MELSEC MC] タブ</text>
+
+    <path d="M 14 62 L 14 42 Q 14 38 18 38 L 108 38 Q 112 38 112 42 L 112 62 Z" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="1" />
+    <text x="63" y="53" class="ui" font-size="11.5" fill="#475569" text-anchor="middle">コマンド集</text>
+    <path d="M 114 62 L 114 40 Q 114 36 118 36 L 226 36 Q 230 36 230 40 L 230 62 Z" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2" />
+    <text x="172" y="53" class="ui" font-size="11.5" font-weight="700" fill="#1D4ED8" text-anchor="middle">MELSEC MC</text>
+
+    <rect x="14" y="61" width="580" height="294" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2" />
+    <line x1="115" y1="61" x2="229" y2="61" stroke="#FFFFFF" stroke-width="2" />
+
+    <!-- GroupBox 1: PLC Ethernet 接続設定 -->
+    <rect x="28" y="76" width="552" height="90" class="grp-box" />
+    <rect x="38" y="68" width="142" height="16" fill="#FFFFFF" />
+    <text x="42" y="80" class="grp-lbl">PLC Ethernet 接続設定</text>
+
+    <text x="44" y="106" class="ui" font-size="11" fill="#334155">ホスト / IPアドレス:</text>
+    <rect x="166" y="90" width="210" height="24" class="input-hi" />
+    <text x="176" y="106" class="mono" font-size="11.5" font-weight="700" fill="#1E3A8A">192.168.1.10</text>
+    <text x="388" y="106" class="ui" font-size="11" fill="#334155">プロトコル:</text>
+    <rect x="454" y="90" width="110" height="24" class="input-box" />
+    <text x="464" y="106" class="mono" font-size="11.5" fill="#0F172A">TCP</text>
+
+    <text x="44" y="144" class="ui" font-size="11" fill="#334155">ポート番号:</text>
+    <rect x="166" y="128" width="96" height="24" class="input-box" />
+    <text x="176" y="144" class="mono" font-size="11.5" fill="#0F172A">5000</text>
+    <rect x="272" y="128" width="104" height="24" class="btn-box" />
+    <text x="324" y="144" class="ui" font-size="11" font-weight="600" fill="#1E293B" text-anchor="middle">標準 (5000)</text>
+
+    <!-- GroupBox 2: MC 3Eフレーム・ルーティング設定 -->
+    <rect x="28" y="176" width="276" height="114" class="grp-box" />
+    <rect x="38" y="168" width="196" height="16" fill="#FFFFFF" />
+    <text x="42" y="180" class="grp-lbl">MC 3Eフレーム・ルーティング設定</text>
+
+    <text x="42" y="206" class="ui" font-size="11" fill="#334155">フレーム形式:</text>
+    <rect x="142" y="190" width="146" height="24" class="input-box" />
+    <text x="150" y="206" class="mono" font-size="11.5" fill="#0F172A">3E Binary</text>
+
+    <text x="42" y="240" class="ui" font-size="11" fill="#334155">ネットワーク番号:</text>
+    <rect x="142" y="224" width="66" height="24" class="input-box" />
+    <text x="152" y="240" class="mono" font-size="11.5" fill="#0F172A">0</text>
+    <text x="216" y="240" class="ui" font-size="10.5" fill="#64748B">(0-239)</text>
+
+    <text x="42" y="274" class="ui" font-size="11" fill="#334155">PC番号:</text>
+    <rect x="142" y="258" width="66" height="24" class="input-box" />
+    <text x="152" y="274" class="mono" font-size="11.5" fill="#0F172A">255</text>
+    <text x="216" y="274" class="ui" font-size="10.5" fill="#64748B">(0-255)</text>
+
+    <!-- GroupBox 3: 通信制御・タイムアウト -->
+    <rect x="314" y="176" width="266" height="114" class="grp-box" />
+    <rect x="324" y="168" width="136" height="16" fill="#FFFFFF" />
+    <text x="328" y="180" class="grp-lbl">通信制御・タイムアウト</text>
+
+    <text x="328" y="210" class="ui" font-size="11" fill="#334155">応答タイムアウト:</text>
+    <rect x="434" y="194" width="94" height="24" class="input-box" />
+    <text x="444" y="210" class="mono" font-size="11.5" fill="#0F172A">3000</text>
+    <text x="536" y="210" class="ui" font-size="11" fill="#475569">ms</text>
+
+    <rect x="328" y="236" width="238" height="38" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1" />
+    <text x="338" y="259" class="mono" font-size="11" fill="#1E40AF">CPU監視タイマ: 3000 ms (0x000C)</text>
+
+    <!-- GroupBox 4: 設定概要 -->
+    <rect x="28" y="300" width="552" height="44" class="grp-box" />
+    <rect x="38" y="292" width="60" height="16" fill="#FFFFFF" />
+    <text x="42" y="304" class="grp-lbl">設定概要</text>
+    <text x="42" y="330" class="ui" font-size="11" fill="#475569">通信パラメータ:</text>
+    <text x="140" y="330" class="mono" font-size="11.5" font-weight="700" fill="#1E3A8A">192.168.1.10:5000 [TCP, 3E Binary, Net:0, PC:255]</text>
+
+    <rect x="200" y="364" width="96" height="30" class="btn-pri" />
+    <text x="248" y="383" class="ui" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">OK</text>
+    <rect x="312" y="364" width="96" height="30" class="btn-box" />
+    <text x="360" y="383" class="ui" font-size="12" font-weight="600" fill="#1E293B" text-anchor="middle">キャンセル</text>
+  </g>
+
+  <rect x="26" y="436" width="608" height="44" class="callout-box" />
+  <text x="42" y="455" class="ui" font-size="11" font-weight="700" fill="#92400E">メイン画面の［通信モード(M)］で「MELSEC MC」選択時に自動表示</text>
+  <text x="42" y="472" class="ui" font-size="10.5" fill="#451A03">・実通信は TCP・QnA 互換 3E バイナリフレーム専用。応答タイムアウトは 250ms 単位の CPU 監視タイマ値へ自動換算されます。</text>
+</svg>
